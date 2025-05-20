@@ -1,95 +1,123 @@
 // src/app/page.tsx
-
 "use client";
 
-import type * as React from "react";
 import { InstructionInput } from "@/components/instruction-input";
 import { PipelineVisualization } from "@/components/pipeline-visualization";
 import { Separator } from "@/components/ui/separator";
 import {
   useSimulationState,
   useSimulationActions,
-} from "@/context/SimulationContext"; // Import context hooks
+} from "@/context/SimulationContext";
+
+import {
+  Zap,
+  ChevronRight,
+  MoveRight,
+  ShieldCheck,
+  Shield,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
-  const { mode } = useSimulationState(); // Get mode from context
-  const { setMode } = useSimulationActions(); // Get setMode from context
-  // Get state and actions from context
-  const { instructions, isRunning, currentCycle, maxCycles, isFinished } =
+  /* -------- contexto -------- */
+  const { instructions, isRunning, currentCycle, maxCycles, isFinished, mode } =
     useSimulationState();
-  const { startSimulation, resetSimulation } = useSimulationActions();
+  const { startSimulation, resetSimulation, setMode } = useSimulationActions();
 
-  // Simulation has started if cycle > 0
   const hasStarted = currentCycle > 0;
 
+  /* -------- UI -------- */
   return (
-    <div className="container mx-auto p-4 md:p-8 flex flex-col items-center space-y-8">
-      <header className="text-center">
-        <h1 className="text-3xl font-bold text-primary">
+    <main className="min-h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+      {/* hero */}
+      <section className="py-12 text-center">
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight inline-flex items-center gap-2 bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-pink-500 to-purple-500">
+          <Zap className="h-8 w-8 animate-pulse" />
           MIPS Pipeline Viewer
         </h1>
-        <p className="text-muted-foreground">
-          Visualize the flow of MIPS instructions through a 5-stage pipeline.
+        <p className="mt-2 text-slate-300 max-w-xl mx-auto">
+          Visualiza paso a paso cómo fluyen las instrucciones a través de un
+          pipeline de 5 etapas.
         </p>
-      </header>
+      </section>
 
-      <div className="flex flex-col md:flex-row items-center gap-4 mt-4">
-        <button
-          onClick={() => setMode(mode === "stall" ? "normal" : "stall")}
-          className={`px-4 py-2 rounded-md border ${
-            mode === "stall" ? "bg-blue-600 text-white" : "bg-gray-200"
-          }`}
-        >
-          Activar Stall
-        </button>
+      {/* modo selector */}
+      <section className="flex justify-center">
+        <div className="flex flex-wrap gap-4">
+          <button
+            onClick={() => setMode(mode === "stall" ? "normal" : "stall")}
+            className={cn(
+              "px-5 py-2 rounded-full border transition-all flex items-center gap-2",
+              mode === "stall"
+                ? "bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg"
+                : "bg-white/10 hover:bg-white/20"
+            )}
+          >
+            {mode === "stall" ? (
+              <ShieldCheck className="h-4 w-4" />
+            ) : (
+              <Shield className="h-4 w-4" />
+            )}
+            Stall
+          </button>
 
-        <button
-          onClick={() =>
-            setMode(mode === "forwarding" ? "normal" : "forwarding")
-          }
-          className={`px-4 py-2 rounded-md border ${
-            mode === "forwarding" ? "bg-blue-600 text-white" : "bg-gray-200"
-          }`}
-        >
-          Activar Forwarding
-        </button>
-      </div>
+          <button
+            onClick={() =>
+              setMode(mode === "forwarding" ? "normal" : "forwarding")
+            }
+            className={cn(
+              "px-5 py-2 rounded-full border transition-all flex items-center gap-2",
+              mode === "forwarding"
+                ? "bg-gradient-to-r from-green-500 to-teal-500 shadow-lg"
+                : "bg-white/10 hover:bg-white/20"
+            )}
+          >
+            <MoveRight className="h-4 w-4" />
+            Forwarding
+          </button>
+        </div>
+      </section>
 
-      {/* Pass context actions/state down */}
-      <InstructionInput
-        onInstructionsSubmit={startSimulation}
-        onReset={resetSimulation}
-        isRunning={isRunning} // isRunning is needed for button state/icons
-      />
+      {/* input & visualización */}
+      <section className="container mx-auto px-4 py-10 space-y-8">
+        <InstructionInput
+          onInstructionsSubmit={startSimulation}
+          onReset={resetSimulation}
+          isRunning={isRunning}
+        />
 
-      <Separator className="my-4" />
+        <Separator className="bg-white/10" />
 
-      {/* Conditionally render visualization and cycle info only if instructions exist */}
-      {instructions.length > 0 && (
-        <>
-          <PipelineVisualization />
-          {/* Display cycle info below the visualization */}
-          {/* Ensure maxCycles is valid before displaying */}
-          {maxCycles > 0 && (
-            <p className="text-center text-muted-foreground mt-4">
-              Cycle: {currentCycle} / {maxCycles}{" "}
-              {isFinished ? "(Finished)" : isRunning ? "(Running)" : "(Paused)"}
-            </p>
-          )}
-        </>
-      )}
-      {/* Show message if reset/never run and no instructions */}
-      {!hasStarted && instructions.length === 0 && (
-        <p className="text-center text-muted-foreground mt-4">
-          Enter instructions and press Start Simulation.
-        </p>
-      )}
-      {/* Show different message if reset after a run */}
-      {hasStarted && instructions.length === 0 && (
-        <p className="text-center text-muted-foreground mt-4">
-          Simulation reset. Enter new instructions to start again.
-        </p>
-      )}
-    </div>
+        {instructions.length > 0 && (
+          <>
+            <PipelineVisualization />
+
+            {/* footer ciclos */}
+            {maxCycles > 0 && (
+              <p className="text-center mt-4 text-slate-400">
+                Cycle&nbsp;{currentCycle}/{maxCycles}&nbsp;
+                {isFinished
+                  ? "(Finished)"
+                  : isRunning
+                  ? "(Running)"
+                  : "(Paused)"}
+              </p>
+            )}
+          </>
+        )}
+
+        {/* mensajes inicial / reset */}
+        {!hasStarted && instructions.length === 0 && (
+          <p className="text-center text-slate-400">
+            Enter instructions and press <strong>Start Simulation</strong>.
+          </p>
+        )}
+        {hasStarted && instructions.length === 0 && (
+          <p className="text-center text-slate-400">
+            Simulation reset. Enter new instructions to start again.
+          </p>
+        )}
+      </section>
+    </main>
   );
 }

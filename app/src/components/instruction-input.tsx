@@ -1,115 +1,140 @@
 // src/components/instruction-input.tsx
 "use client";
 
-import type * as React from 'react';
-import { useState, useEffect } from 'react';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useSimulationActions, useSimulationState } from '@/context/SimulationContext'; // Import context hooks
-import { Play, Pause, RotateCcw } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Play, Pause, RotateCcw, Sparkles } from "lucide-react";
+import {
+  useSimulationActions,
+  useSimulationState,
+} from "@/context/SimulationContext";
 
 interface InstructionInputProps {
-  onInstructionsSubmit: (instructions: string[]) => void;
+  onInstructionsSubmit: (instr: string[]) => void;
   onReset: () => void;
-  isRunning: boolean; // Keep isRunning prop for button state logic
+  isRunning: boolean;
 }
 
-const HEX_REGEX = /^[0-9a-fA-F]{8}$/; // Basic check for 8 hex characters
+const HEX_REGEX = /^[0-9a-fA-F]{8}$/;
 
-export function InstructionInput({ onInstructionsSubmit, onReset, isRunning }: InstructionInputProps) {
-  const [inputText, setInputText] = useState<string>('');
+export function InstructionInput({
+  onInstructionsSubmit,
+  onReset,
+  isRunning,
+}: InstructionInputProps) {
+  const [inputText, setInputText] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { pauseSimulation, resumeSimulation } = useSimulationActions();
-  const { currentCycle, isFinished, instructions } = useSimulationState(); // Get state from context
 
-  // Reset input text when instructions are cleared (e.g., on reset)
+  const { pauseSimulation, resumeSimulation } = useSimulationActions();
+  const { currentCycle, isFinished, instructions } = useSimulationState();
+
+  /* -------- efectos -------- */
   useEffect(() => {
     if (instructions.length === 0) {
-      setInputText('');
-      setError(null); // Clear errors on reset as well
+      setInputText("");
+      setError(null);
     }
   }, [instructions]);
 
-
+  /* -------- helpers -------- */
   const hasStarted = currentCycle > 0;
-  // Can only pause/resume if started and not finished
   const canPauseResume = hasStarted && !isFinished;
-  // Input/Start button should be disabled if simulation has started and isn't finished
   const disableInputAndStart = hasStarted && !isFinished;
 
-
-  const handleSubmit = () => {
+  const submit = () => {
     setError(null);
-    const lines = inputText.trim().split('\n');
-    const currentInstructions = lines
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
+    const lines = inputText.trim().split("\n");
+    const instr = lines.map((l) => l.trim()).filter(Boolean);
 
-    if (currentInstructions.length === 0) {
-      setError('Please enter at least one MIPS instruction in hexadecimal format.');
-      return;
-    }
+    if (instr.length === 0)
+      return setError("Enter at least one instruction (8-hex chars).");
 
-    const invalidInstructions = currentInstructions.filter(inst => !HEX_REGEX.test(inst));
-    if (invalidInstructions.length > 0) {
-      setError(`Invalid instruction format found: ${invalidInstructions.join(', ')}. Each instruction must be 8 hexadecimal characters.`);
-      return;
-    }
+    const invalid = instr.filter((h) => !HEX_REGEX.test(h));
+    if (invalid.length)
+      return setError(
+        `Invalid hex: ${invalid.join(", ")} (must be 8 hex digits).`
+      );
 
-    onInstructionsSubmit(currentInstructions);
+    onInstructionsSubmit(instr);
   };
 
-  const handlePauseResume = () => {
-    if (isRunning) {
-      pauseSimulation();
-    } else {
-      resumeSimulation();
-    }
-  };
+  const toggleRun = () => (isRunning ? pauseSimulation() : resumeSimulation());
 
-
+  /* -------- UI -------- */
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>MIPS Instructions</CardTitle>
+    <Card className="w-full max-w-lg backdrop-blur-md bg-white/10 border-white/20 shadow-xl">
+      <CardHeader className="border-b border-white/20">
+        <CardTitle className="flex items-center gap-2 text-white">
+          <Sparkles className="h-5 w-5 text-amber-400 animate-pulse" />
+          MIPS Instructions
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid w-full gap-1.5">
-          <Label htmlFor="instructions">Enter Hex Instructions (one per line)</Label>
+
+      <CardContent className="space-y-5 p-6">
+        <div className="grid gap-1.5">
+          <Label
+            htmlFor="instructions"
+            className="text-slate-200 tracking-wide"
+          >
+            Ingresar instrucciones{" "}
+            <span className="italic">(hex por línea)</span>
+          </Label>
+
           <Textarea
             id="instructions"
-            placeholder="e.g., 00a63820..." // Removed 0x prefix for consistency with regex
+            placeholder="8d280000\n010b5020"
+            rows={6}
+            disabled={disableInputAndStart}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            rows={5}
-            className="font-mono"
-            // Disable input field if simulation has started and not yet finished
-            disabled={disableInputAndStart}
-            aria-label="MIPS Hex Instructions Input"
+            className="font-mono resize-none bg-white/10 border-white/20 text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-amber-400"
           />
-          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          {error && <p className="text-sm text-red-400">{error}</p>}
         </div>
-        <div className="flex justify-between items-center gap-2">
-           {/* Start Button: Disabled if started and not finished */}
-          <Button onClick={handleSubmit} disabled={disableInputAndStart} className="flex-1">
-             {isFinished ? 'Finished' : hasStarted ? 'Running...' : 'Start Simulation'}
+
+        {/* botones */}
+        <div className="flex gap-3">
+          {/* start */}
+          <Button
+            onClick={submit}
+            disabled={disableInputAndStart}
+            className="flex-1 bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-400 hover:to-pink-400 text-white shadow-lg shadow-amber-500/20 disabled:opacity-30"
+          >
+            {isFinished
+              ? "Finished"
+              : hasStarted
+              ? "Running..."
+              : "Start Simulation"}
           </Button>
 
-          {/* Conditional Play/Pause Button: Show only when pause/resume is possible */}
+          {/* pause / run */}
           {canPauseResume && (
-             <Button variant="outline" onClick={handlePauseResume} size="icon" aria-label={isRunning ? 'Pause Simulation' : 'Resume Simulation'}>
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={toggleRun}
+              className="backdrop-blur bg-white/10 border-white/20 hover:bg-white/20"
+              aria-label={isRunning ? "Pause" : "Resume"}
+            >
               {isRunning ? <Pause /> : <Play />}
-             </Button>
+            </Button>
           )}
 
-          {/* Reset Button: Show only if the simulation has started */}
-           {hasStarted && (
-              <Button variant="destructive" onClick={onReset} size="icon" aria-label="Reset Simulation">
-                <RotateCcw />
-              </Button>
-           )}
+          {/* reset */}
+          {hasStarted && (
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={onReset}
+              aria-label="Reset"
+            >
+              <RotateCcw />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
